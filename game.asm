@@ -48,6 +48,7 @@ ENDM
 
 	ORG	3H		; interrupt service routine for external interrupt
 	MOV	JUMP_DURATION, #3	; set number of cycles for dino to stay in the air
+	CLR	EX0		; disable interrupt while dino is in the air
 	RETI
 
 chars:	DB	00H, 07H, 07H, 0CH, 1EH, 1CH, 14H, 12H, 04H, 04H, 05H, 17H, 1EH, 0EH, 06H, 06H, 0H, 10H, 1CH, 0FH, 0CH, 08H, 00H, 00H	; custom characters to display game entities
@@ -122,6 +123,7 @@ dino_down:
 	CMD	#SPACE
 	CURSOR	#0C1H		; move to second line
 	CMD	#DINO
+	SETB	EX0		; enable interrupt when dino is on the floor
 dino_up:
 
 ; repaint cacti
