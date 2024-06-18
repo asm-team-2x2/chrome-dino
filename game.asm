@@ -219,8 +219,8 @@ no_highscore:
 	MOV	A, R2
 	CALL	PRINTN		; print score
 	CMD	#30H		; print '0'
-	CMD	#20H		; print ' '
-	CMD	#20H		; print ' '
+	CMD	#SPACE
+	CMD	#SPACE
 
 	CMD	#48H		; print 'H'
 	CMD	#69H		; print 'i'
