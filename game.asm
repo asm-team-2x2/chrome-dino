@@ -15,6 +15,34 @@ CMD	MACRO	CMD_CODE
 	CLR	E
 ENDM
 
+; move dino up
+DINO_UP	MACRO
+	CLR	RS
+	CMD	#0C1H
+	SETB	RS
+	CMD	#3
+
+	CLR	RS
+	CMD	#81H
+	SETB	RS
+	CMD	#0
+ENDM
+
+; move dino down
+DINO_DOWN	MACRO
+	CLR	RS
+	CMD	#81H
+	SETB	RS
+	CMD	#3
+
+	CLR	RS
+	CMD	#0C1H
+	SETB	RS
+	CMD	#0
+ENDM
+
+
+
 ; ========== code ==========
 	ORG	0H
 	JMP	INIT
@@ -38,24 +66,27 @@ INIT:
 	CMD	#02H		; cursor home
 	CMD	#0CH		; display on, cursor off
 	CMD	#1EH		; cursor/display shift
+	CMD	#38H		; two lines, 5x7 matrix
 
 ; load custom characters
 	CMD	#40H		; set CGRAM address
 	SETB	RS		; select data register
 	MOV	DPTR, #CHARS
 	MOV	R0, #0
-load_characters:
+LOAD_CHARACTERS:
 	MOV	A, R0
 	INC	R0
 	MOVC	A, @A+DPTR
 	CMD	A
-	CJNE	R0, #24, load_characters
+	CJNE	R0, #24, LOAD_CHARACTERS
+	CLR	RS		; select command register
 
+	DINO_DOWN		; display dino initially
 	JMP	GAME_LOOP	; start game
 
 JUMP:				; interrupt service routine for external interrupt
-	SETB	C		; move dino in the air
-	MOV	JUMP_DURATION, #3	; set number of cycles for dino to stay in the air
+	DINO_UP
+	MOV	JUMP_DURATION, #30	; set number of cycles for dino to stay in the air
 	RETI
 
 GAME_LOOP:
@@ -66,7 +97,7 @@ GAME_LOOP:
 
 DINO_IN_AIR:
 	DJNZ	JUMP_DURATION, DINO_NO_CHANGE	; decrement duration, do nothing if still in the air
-	CLR	C		; move dino to the floor if duration was set to 0
+	DINO_DOWN		; move dino to the floor if duration was set to 0
 
 DINO_NO_CHANGE:
 	JMP	GAME_LOOP
