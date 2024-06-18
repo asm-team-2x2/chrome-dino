@@ -4,11 +4,15 @@ E	BIT	P2.0
 RW	BIT	P2.1
 RS	BIT	P2.2
 
+; ========== registers ==========
+; R0: iteration variable
+; R1: jump duration (greater than 0 while dino is in the air)
+; R2: score
+; R3: highscore
+
 ; ========== variables ==========
 CACTI_L	DATA	20H
 CACTI_R	DATA	21H
-; R0: iteration variable
-; R1: jump duration (greater than 0 while dino is in the air)
 
 ; ========== constants ==========
 SPACE	EQU	20H
@@ -49,18 +53,38 @@ CLEAR	MACRO
 	CMD	#01H		; clear display
 ENDM
 
+; ========== routines ==========
+; print the first 3 decimal digits of the accu to the LCD
+printn:
+	MOV	R0, #3
+modulo_loop:
+	MOV	B, #10
+	DIV	AB		; calculate three decimal digits with a modulo operation
+	PUSH	B		; store decimal digits on the stack to print in reverse order
+	DJNZ	R0, MODULO_LOOP
+
+	MOV	R0, #3
+printn_loop:
+	POP	A
+	ADD	A, #30H		; add 0x30 to every digit to conver to ASCII
+	CMD	A		; print digit
+	DJNZ	R0, PRINTN_LOOP
+	RET
+
 ; ========== code ==========
 	ORG	0H
 	JMP	INIT
 
-	ORG	3H		; interrupt service routine for external interrupt
+; interrupt service routine for external interrupt
+	ORG	3H
 	MOV	R1, #2		; set number of cycles for dino to stay in the air
 	RETI
 
 chars:	DB	00H, 07H, 07H, 0CH, 1EH, 1CH, 14H, 12H, 04H, 04H, 05H, 17H, 1EH, 0EH, 06H, 06H, 0H, 10H, 1CH, 0FH, 0CH, 08H, 00H, 00H	; custom characters to display game entities
-text:	DB	'GAME  OVER'
+text:	DB	'GAME OVER!'
 
 init:
+
 ; initialize external interrupt
 	SETB	IT0		; trigger on falling edge
 	SETB	EX0		; enable external interrupt
@@ -80,14 +104,17 @@ init:
 	SETB	RS		; select data register
 	MOV	DPTR, #CHARS
 	MOV	R0, #0
-load_characters:
+characters_loop:
 	MOV	A, R0
 	INC	R0
 	MOVC	A, @A+DPTR
 	CMD	A
-	CJNE	R0, #24, LOAD_CHARACTERS
+	CJNE	R0, #24, CHARACTERS_LOOP
 
 restart:
+; reset score
+	MOV	R2, #0
+
 ; load cacti positions
 	MOV	CACTI_L, #00001001B
 	MOV	CACTI_R, #10010011B
@@ -142,6 +169,9 @@ dino_down:
 	ANL	C, CACTI_L.7
 	JC	GAME_OVER
 
+; increase score
+	INC	R2
+
 ; shift cacti positions
 	MOV	A, CACTI_R	; move right side of cacti
 	RLC	A
@@ -156,22 +186,47 @@ dino_down:
 game_over:
 ; print "GAME OVER" text
 	CLEAR
-	CURSOR	#84H
+	CURSOR	#81H
 	MOV	DPTR, #TEXT
 	MOV	R0, #0
-print_text:
+text_loop:
 	MOV	A, R0
 	MOVC	A, @A+DPTR
 	CMD	A
 	INC	R0
-	CJNE	R0, #10, PRINT_TEXT
+	CJNE	R0, #10, TEXT_LOOP
+
+; update highscore
+	MOV	A, R3
+	SUBB	A, R2
+	JNC	NO_HIGHSCORE
+	MOV	A, R2		; move higscore via accu because register to register move is not possible
+	MOV	R3, A
+no_highscore:
+
+; print score and highscore
+	CURSOR	#0C1H		; move to second line
+	CMD	#53H		; print 'S'
+	CMD	#63H		; print 'c'
+	CMD	#3AH		; print ':'
+	MOV	A, R2
+	CALL	PRINTN		; print score
+	CMD	#30H		; print '0'
+	CMD	#20H		; print ' '
+	CMD	#20H		; print ' '
+
+	CMD	#48H		; print 'H'
+	CMD	#69H		; print 'i'
+	CMD	#3AH		; print ':'
+	MOV	A, R3
+	CALL	PRINTN		; print highscore
+	CMD	#30H		; print '0'
 
 ; wait until player jumps to restart the game
 	MOV	R1, #0
-wait:
+wait_loop:
 	MOV	A, R1
-	JZ	WAIT
-
+	JZ	WAIT_LOOP
 	MOV	R1, #0
 	JMP	RESTART
 
