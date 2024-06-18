@@ -11,8 +11,9 @@ RS	BIT	P2.2
 ; R3: highscore
 
 ; ========== variables ==========
-CACTI_L	DATA	20H
-CACTI_R	DATA	21H
+CACTI_1	DATA	20H
+CACTI_2	DATA	21H
+CACTI_3	DATA	22H
 
 ; ========== constants ==========
 SPACE	EQU	20H
@@ -116,8 +117,9 @@ restart:
 	MOV	R2, #0
 
 ; load cacti positions
-	MOV	CACTI_L, #00001001B
-	MOV	CACTI_R, #10010011B
+	MOV	CACTI_1, #00001001B
+	MOV	CACTI_2, #10010011B
+	MOV	CACTI_3, #00011011B
 
 ; print birds
 	CLEAR
@@ -144,42 +146,47 @@ dino_up:
 	DEC	R1		; decrement jump duration while above 0
 	CMD	#DINO
 	CURSOR	#0C1H		; move to second line
-	PRINTC	CACTI_L.7
+	PRINTC	CACTI_1.7
 dino_down:
 
 ; repaint cacti
-	PRINTC	CACTI_L.6
-	PRINTC	CACTI_L.5
-	PRINTC	CACTI_L.4
-	PRINTC	CACTI_L.3
-	PRINTC	CACTI_L.2
-	PRINTC	CACTI_L.1
-	PRINTC	CACTI_L.0
-	PRINTC	CACTI_R.7
-	PRINTC	CACTI_R.6
-	PRINTC	CACTI_R.5
-	PRINTC	CACTI_R.4
-	PRINTC	CACTI_R.3
-	PRINTC	CACTI_R.2
-	PRINTC	CACTI_R.1
-	PRINTC	CACTI_R.0
+	PRINTC	CACTI_1.6
+	PRINTC	CACTI_1.5
+	PRINTC	CACTI_1.4
+	PRINTC	CACTI_1.3
+	PRINTC	CACTI_1.2
+	PRINTC	CACTI_1.1
+	PRINTC	CACTI_1.0
+	PRINTC	CACTI_2.7
+	PRINTC	CACTI_2.6
+	PRINTC	CACTI_2.5
+	PRINTC	CACTI_2.4
+	PRINTC	CACTI_2.3
+	PRINTC	CACTI_2.2
+	PRINTC	CACTI_2.1
+	PRINTC	CACTI_2.0
 
 ; check for collision
 	MOV	C, EX0
-	ANL	C, CACTI_L.7
+	ANL	C, CACTI_1.7
 	JC	GAME_OVER
 
 ; increase score
 	INC	R2
 
 ; shift cacti positions
-	MOV	A, CACTI_R	; move right side of cacti
+	MOV	A, CACTI_3	; move right side of cacti
 	RLC	A
-	MOV	CACTI_R, A
-	MOV	A, CACTI_L	; move left side of cacti
+	MOV	CACTI_3, A
+
+	MOV	A, CACTI_2	; move middle side of cacti
 	RLC	A
-	MOV	CACTI_L, A
-	MOV	CACTI_R.0, C
+	MOV	CACTI_2, A
+
+	MOV	A, CACTI_1	; move left side of cacti
+	RLC	A
+	MOV	CACTI_1, A
+	MOV	CACTI_3.0, C
 
 	JMP	GAME_LOOP
 
