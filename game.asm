@@ -5,9 +5,10 @@ RW	BIT	P2.1
 RS	BIT	P2.2
 
 ; ========== variables ==========
-JUMP_DURATION	DATA	20H
-CACTI_L	DATA	21H
-CACTI_R	DATA	22H
+CACTI_L	DATA	20H
+CACTI_R	DATA	21H
+; R0: iteration variable
+; R1: jump duration (greater than 0 while dino is in the air)
 
 ; ========== constants ==========
 SPACE	EQU	20H
@@ -53,7 +54,7 @@ ENDM
 	JMP	INIT
 
 	ORG	3H		; interrupt service routine for external interrupt
-	MOV	JUMP_DURATION, #2	; set number of cycles for dino to stay in the air
+	MOV	R1, #2		; set number of cycles for dino to stay in the air
 	RETI
 
 chars:	DB	00H, 07H, 07H, 0CH, 1EH, 1CH, 14H, 12H, 04H, 04H, 05H, 17H, 1EH, 0EH, 06H, 06H, 0H, 10H, 1CH, 0FH, 0CH, 08H, 00H, 00H	; custom characters to display game entities
@@ -103,22 +104,21 @@ restart:
 
 game_loop:
 ; repaint dino
-	CURSOR	#81H
+	CURSOR	#81H		; move to first line
 
-	MOV	A, JUMP_DURATION
-	JZ	DINO_DOWN
-	CLR	EX0		; disable interrupt while dino is in the air
-	DEC	JUMP_DURATION	; decrement jump duration while above 0
-	CMD	#DINO
-	CURSOR	#0C1H		; move to second line
-	PRINTC	CACTI_L.7
-	JMP	DINO_UP
-dino_down:
-	CMD	#SPACE
+	CJNE	R1, #0H, DINO_UP
+	CMD	#SPACE		; print space if dino is on the floor
 	CURSOR	#0C1H		; move to second line
 	CMD	#DINO
 	SETB	EX0		; enable interrupt when dino is on the floor
+	JMP	DINO_DOWN
 dino_up:
+	CLR	EX0		; disable interrupt while dino is in the air
+	DEC	R1		; decrement jump duration while above 0
+	CMD	#DINO
+	CURSOR	#0C1H		; move to second line
+	PRINTC	CACTI_L.7
+dino_down:
 
 ; repaint cacti
 	PRINTC	CACTI_L.6
@@ -167,12 +167,12 @@ print_text:
 	CJNE	R0, #10, PRINT_TEXT
 
 ; wait until player jumps to restart the game
-	MOV	JUMP_DURATION, #0
+	MOV	R1, #0
 wait:
-	MOV	A, JUMP_DURATION
+	MOV	A, R1
 	JZ	WAIT
 
-	MOV	JUMP_DURATION, #0
+	MOV	R1, #0
 	JMP	RESTART
 
 	END
