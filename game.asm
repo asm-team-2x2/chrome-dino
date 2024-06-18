@@ -68,6 +68,7 @@ init:
 ; initialize LCD display
 	MOV	D, #0		; clear data pins
 	CLR	RW		; write mode for display
+	CLR	RS		; select command register
 	CMD	#02H		; cursor home
 	CMD	#0CH		; display on, cursor off
 	CMD	#1EH		; cursor/display shift
