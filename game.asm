@@ -5,9 +5,15 @@ RW	BIT	P2.1
 RS	BIT	P2.2
 
 ; ========== variables ==========
-JUMP_DURATION	EQU	20H
-FLOOR_L	EQU	21H
-FLOOR_R	EQU	22H
+JUMP_DURATION	DATA	20H
+FLOOR_L	DATA	21H
+FLOOR_R	DATA	22H
+
+; ========== constants ==========
+SPACE	EQU	20H
+DINO	EQU	0H
+CACTUS	EQU	1H
+BIRD	EQU	2H
 
 ; ========== macros ==========
 ; sends a command to the LCDs data pins
@@ -60,7 +66,7 @@ INIT:
 	MOV	FLOOR_L, #00010011B
 
 GAME_LOOP:
-; update dino position
+; update jump duration
 	MOV	A, JUMP_DURATION
 	JZ	DURATION_NO_UPDATE	; dino is on the floor if duration = 0
 	DEC	JUMP_DURATION
@@ -83,11 +89,11 @@ DURATION_NO_UPDATE:
 ; dino up
 	MOV	A, JUMP_DURATION
 	JZ	DINO_UP_0
-	CMD	#0
+	CMD	#DINO
 	JMP	DINO_UP_1
 
 DINO_UP_0:
-	CMD	#3
+	CMD	#SPACE
 DINO_UP_1:
 
 	CLR	RS		; select command register
@@ -97,12 +103,12 @@ DINO_UP_1:
 ; dino down
 	MOV	A, JUMP_DURATION
 	JNZ	DINO_DOWN_0
-	CMD	#0
+	CMD	#DINO
 	JMP	DINO_DOWN_1
 
-DINO_DOWN_1:
-	CMD	#3
 DINO_DOWN_0:
+	CMD	#SPACE
+DINO_DOWN_1:
 
 ; floor left
 	MOV	R0, #0
@@ -111,10 +117,10 @@ DINO_DOWN_0:
 
 REPAINT_FLOOR_L:
 	JB	A.7, PRINT_FLOOR_L
-	CMD	#3
+	CMD	#SPACE
 	JMP	SKIP_FLOOR_L
 PRINT_FLOOR_L:
-	CMD	#1
+	CMD	#CACTUS
 SKIP_FLOOR_L:
 	RL	A
 	INC	R0
@@ -125,10 +131,10 @@ SKIP_FLOOR_L:
 
 REPAINT_FLOOR_R:
 	JB	A.7, PRINT_FLOOR_R
-	CMD	#3
+	CMD	#SPACE
 	JMP	SKIP_FLOOR_R
 PRINT_FLOOR_R:
-	CMD	#1
+	CMD	#CACTUS
 SKIP_FLOOR_R:
 	RL	A
 	INC	R0
