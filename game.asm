@@ -1,54 +1,38 @@
 ;GAME.ASM
 
-INPUT	EQU	P0.0
-PREVIOUS_INPUT	EQU	20H
-JUMP_DURATION	EQU	21h
-JUMPING	EQU	22h
-SCORE	EQU 23h
+JUMP_DURATION	EQU	20H
 
+	ORG	0H
 	JMP	INIT
 
-INIT:
-	MOV	INPUT, #0
-	MOV	PREVIOUS_INPUT, #0
-	MOV	JUMP_DURATION, #5
-	MOV	JUMPING, #0
-	MOV	SCORE, #0
-	JMP	START
+	ORG	3H
+	JMP	JUMP
 
-START:
+INIT:
+; initialize external interrupt
+	SETB	IT0		; trigger on falling edge
+	SETB	EX0		; enable external interrupt
+	SETB	EA		; enable interrupts
+
+	MOV	SCORE, #0
 	JMP	GAME_LOOP
+
+JUMP:				; interrupt service routine for external interrupt
+	SETB	C		; move dino in the air
+	MOV	JUMP_DURATION, #3	; set number of cycles for dino to stay in the air
+	RETI
 
 GAME_LOOP:
-	CALL CHECK_INPUT
-	NOP
-	; REST OF THE GAME LOGIC HERE
-	CALL	DECREMENT_JUMPING
+; update dino position
+	MOV	A, JUMP_DURATION
+	JNZ	DINO_IN_AIR	; dino is in the air if duration != 0
+	JMP	DINO_NO_CHANGE	; do nothing if dino is on the floor
+
+DINO_IN_AIR:
+	DJNZ	JUMP_DURATION, DINO_NO_CHANGE	; decrement duration, do nothing if still in the air
+	CLR	C		; move dino to the floor if duration was set to 0
+
+DINO_NO_CHANGE:
 	JMP	GAME_LOOP
 
-CHECK_INPUT:
-	MOV	A, INPUT
-	MOV	B, PREVIOUS_INPUT
-	XRL	A, B
-	JNZ	INPUT_CHANGED
-CHECK_INPUT_END:
-	CALL SET_PREVIOUS_INPUT
-	RET
-
-INPUT_CHANGED:
-	MOV	A, JUMPING
-	JNZ	CHECK_INPUT_END
-	MOV	JUMPING, JUMP_DURATION
-	JMP	CHECK_INPUT_END
-
-SET_PREVIOUS_INPUT:
-	MOV	PREVIOUS_INPUT, INPUT
-	RET
-
-DECREMENT_JUMPING:
-	MOV	A, JUMPING
-	JZ	DECREMENT_JUMPING_END
-	DEC	JUMPING
-DECREMENT_JUMPING_END:
-	RET
-
+	END
