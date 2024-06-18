@@ -6,8 +6,8 @@ RS	BIT	P2.2
 
 ; ========== variables ==========
 JUMP_DURATION	DATA	20H
-FLOOR_L	DATA	21H
-FLOOR_R	DATA	22H
+CACTI_L	DATA	21H
+CACTI_R	DATA	22H
 
 ; ========== constants ==========
 SPACE	EQU	20H
@@ -23,17 +23,24 @@ CMD	MACRO	CMD_CODE
 	CLR	E
 ENDM
 
+; move cursor to the given position
+CURSOR	MACRO	POSITION
+	CLR	RS		; select command register
+	CMD	POSITION	; move cursor to the given position
+	SETB	RS		; select data register
+ENDM
+
 ; print cactus to LCD if cond bit is set, else print space
-printc	macro	cond
-	local	print_space
-	local	print_cactus
-	jnb	cond, print_space
-	cmd	#cactus
-	jmp	print_cactus
-print_space:
-	cmd	#space
+PRINTC	MACRO	COND
+	LOCAL	PRINT_SPACE
+	LOCAL	PRINT_CACTUS
+	JNB	COND, PRINT_SPACE
+	CMD	#CACTUS
+	JMP	PRINT_CACTUS
+print_space:			; IMPORTANT ! These labels have to be in lower case, otherwise the precompiler will fail!
+	CMD	#SPACE
 print_cactus:
-endm
+ENDM
 
 ; ========== code ==========
 	ORG	0H
@@ -43,9 +50,9 @@ endm
 	MOV	JUMP_DURATION, #3	; set number of cycles for dino to stay in the air
 	RETI
 
-CHARS:	DB	00H, 07H, 07H, 0CH, 1EH, 1CH, 14H, 12H, 04H, 04H, 05H, 17H, 1EH, 0EH, 06H, 06H, 0H, 10H, 1CH, 0FH, 0CH, 08H, 00H, 00H	; custom characters to display game entities
+chars:	DB	00H, 07H, 07H, 0CH, 1EH, 1CH, 14H, 12H, 04H, 04H, 05H, 17H, 1EH, 0EH, 06H, 06H, 0H, 10H, 1CH, 0FH, 0CH, 08H, 00H, 00H	; custom characters to display game entities
 
-INIT:
+init:
 ; initialize external interrupt
 	SETB	IT0		; trigger on falling edge
 	SETB	EX0		; enable external interrupt
@@ -62,93 +69,77 @@ INIT:
 	CMD	#38H		; two lines, 5x7 matrix
 
 ; load custom characters
-;	CMD	#40H		; set CGRAM address
-;	SETB	RS		; select data register
-;	MOV	DPTR, #CHARS
-;	MOV	R0, #0
-;LOAD_CHARACTERS:
-;	MOV	A, R0
-;	INC	R0
-;	MOVC	A, @A+DPTR
-;	CMD	A
-;	CJNE	R0, #24, LOAD_CHARACTERS
+	CMD	#40H		; set CGRAM address
+	SETB	RS		; select data register
+	MOV	DPTR, #CHARS
+	MOV	R0, #0
+load_characters:
+	MOV	A, R0
+	INC	R0
+	MOVC	A, @A+DPTR
+	CMD	A
+	CJNE	R0, #24, LOAD_CHARACTERS
+
+; load cacti positions
+	MOV	CACTI_R, #00100011B
+	MOV	CACTI_L, #00010011B
 
 ; print birds
-	CLR	RS		; select command register
-	cmd #87h		; move cursor to the middle of the sky
-	SETB	RS		; select data register
-	cmd #bird
-	cmd #space
-	cmd #space
-	cmd #bird
-	cmd #space
-	cmd #bird
+	CURSOR	#87H		; move to the middle of the sky
+	CMD	#BIRD
+	CMD	#SPACE
+	CMD	#SPACE
+	CMD	#BIRD
+	CMD	#SPACE
+	CMD	#BIRD
 
-; load floor
-	MOV	FLOOR_R, #00100011B
-	MOV	FLOOR_L, #00010011B
-
-GAME_LOOP:
+game_loop:
 ; decrement jump duration while above 0
 	MOV	A, JUMP_DURATION
 	JZ	DURATION_NO_UPDATE
 	DEC	JUMP_DURATION
-DURATION_NO_UPDATE:
+duration_no_update:
 
-; shift map position
-	MOV	A, FLOOR_R	; move right side of floor
+; shift cacti positions
+	MOV	A, CACTI_R	; move right side of cacti
 	RLC	A
-	MOV	FLOOR_R, A
-	MOV	A, FLOOR_L	; move left side of floor
+	MOV	CACTI_R, A
+	MOV	A, CACTI_L	; move left side of cacti
 	RLC	A
-	MOV	FLOOR_L, A
-	MOV	FLOOR_R.0, C
+	MOV	CACTI_L, A
+	MOV	CACTI_R.0, C
 
-; repaint
-	CLR	RS		; select command register
-	CMD	#81H		; second line,
-	SETB	RS		; select data register
+; repaint dino
+	CURSOR	#81H
 
-; dino up
 	MOV	A, JUMP_DURATION
-	JZ	DINO_UP_0
+	JZ	DINO_DOWN
 	CMD	#DINO
-	JMP	DINO_UP_1
-
-DINO_UP_0:
+	CURSOR	#0C1H		; move to second line
+	PRINTC	CACTI_L.7
+	JMP	DINO_UP
+dino_down:
 	CMD	#SPACE
-DINO_UP_1:
-
-	CLR	RS		; select command register
-	CMD	#0C1H		; second line
-	SETB	RS		; select data register
-
-; dino down
-	MOV	A, JUMP_DURATION
-	JNZ	DINO_DOWN_0
+	CURSOR	#0C1H		; move to second line
 	CMD	#DINO
-	JMP	DINO_DOWN_1
-
-DINO_DOWN_0:
-	CMD	#SPACE
-DINO_DOWN_1:
+dino_up:
 
 ; repaint cacti
-	printc	floor_l.6
-	printc	floor_l.5
-	printc	floor_l.4
-	printc	floor_l.3
-	printc	floor_l.2
-	printc	floor_l.1
-	printc	floor_l.0
-	printc	floor_r.7
-	printc	floor_r.6
-	printc	floor_r.5
-	printc	floor_r.4
-	printc	floor_r.3
-	printc	floor_r.2
-	printc	floor_r.1
-	printc	floor_r.0
+	PRINTC	CACTI_L.6
+	PRINTC	CACTI_L.5
+	PRINTC	CACTI_L.4
+	PRINTC	CACTI_L.3
+	PRINTC	CACTI_L.2
+	PRINTC	CACTI_L.1
+	PRINTC	CACTI_L.0
+	PRINTC	CACTI_R.7
+	PRINTC	CACTI_R.6
+	PRINTC	CACTI_R.5
+	PRINTC	CACTI_R.4
+	PRINTC	CACTI_R.3
+	PRINTC	CACTI_R.2
+	PRINTC	CACTI_R.1
+	PRINTC	CACTI_R.0
 
 	JMP	GAME_LOOP
 	END
