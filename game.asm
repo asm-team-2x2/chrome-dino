@@ -42,16 +42,22 @@ print_space:			; IMPORTANT ! These labels have to be in lower case, otherwise th
 print_cactus:
 ENDM
 
+; clear LCD display
+CLEAR	MACRO
+	CLR	RS		; select command register
+	CMD	#01H		; clear display
+ENDM
+
 ; ========== code ==========
 	ORG	0H
 	JMP	INIT
 
 	ORG	3H		; interrupt service routine for external interrupt
-	MOV	JUMP_DURATION, #3	; set number of cycles for dino to stay in the air
-	CLR	EX0		; disable interrupt while dino is in the air
+	MOV	JUMP_DURATION, #2	; set number of cycles for dino to stay in the air
 	RETI
 
 chars:	DB	00H, 07H, 07H, 0CH, 1EH, 1CH, 14H, 12H, 04H, 04H, 05H, 17H, 1EH, 0EH, 06H, 06H, 0H, 10H, 1CH, 0FH, 0CH, 08H, 00H, 00H	; custom characters to display game entities
+text:	DB	'GAME  OVER'
 
 init:
 ; initialize external interrupt
@@ -62,8 +68,6 @@ init:
 ; initialize LCD display
 	MOV	D, #0		; clear data pins
 	CLR	RW		; write mode for display
-	CLR	RS		; select command register
-	CMD	#01H		; clear display
 	CMD	#02H		; cursor home
 	CMD	#0CH		; display on, cursor off
 	CMD	#1EH		; cursor/display shift
@@ -81,11 +85,13 @@ load_characters:
 	CMD	A
 	CJNE	R0, #24, LOAD_CHARACTERS
 
+restart:
 ; load cacti positions
-	MOV	CACTI_R, #00100011B
-	MOV	CACTI_L, #00010011B
+	MOV	CACTI_L, #00001001B
+	MOV	CACTI_R, #10010011B
 
 ; print birds
+	CLEAR
 	CURSOR	#87H		; move to the middle of the sky
 	CMD	#BIRD
 	CMD	#SPACE
@@ -95,26 +101,13 @@ load_characters:
 	CMD	#BIRD
 
 game_loop:
-; decrement jump duration while above 0
-	MOV	A, JUMP_DURATION
-	JZ	DURATION_NO_UPDATE
-	DEC	JUMP_DURATION
-duration_no_update:
-
-; shift cacti positions
-	MOV	A, CACTI_R	; move right side of cacti
-	RLC	A
-	MOV	CACTI_R, A
-	MOV	A, CACTI_L	; move left side of cacti
-	RLC	A
-	MOV	CACTI_L, A
-	MOV	CACTI_R.0, C
-
 ; repaint dino
 	CURSOR	#81H
 
 	MOV	A, JUMP_DURATION
 	JZ	DINO_DOWN
+	CLR	EX0		; disable interrupt while dino is in the air
+	DEC	JUMP_DURATION	; decrement jump duration while above 0
 	CMD	#DINO
 	CURSOR	#0C1H		; move to second line
 	PRINTC	CACTI_L.7
@@ -143,5 +136,42 @@ dino_up:
 	PRINTC	CACTI_R.1
 	PRINTC	CACTI_R.0
 
+; check for collision
+	MOV	C, EX0
+	ANL	C, CACTI_L.7
+	JC	GAME_OVER
+
+; shift cacti positions
+	MOV	A, CACTI_R	; move right side of cacti
+	RLC	A
+	MOV	CACTI_R, A
+	MOV	A, CACTI_L	; move left side of cacti
+	RLC	A
+	MOV	CACTI_L, A
+	MOV	CACTI_R.0, C
+
 	JMP	GAME_LOOP
+
+game_over:
+; print "GAME OVER" text
+	CLEAR
+	CURSOR	#84H
+	MOV	DPTR, #TEXT
+	MOV	R0, #0
+print_text:
+	MOV	A, R0
+	MOVC	A, @A+DPTR
+	CMD	A
+	INC	R0
+	CJNE	R0, #10, PRINT_TEXT
+
+; wait until player jumps to restart the game
+	MOV	JUMP_DURATION, #0
+wait:
+	MOV	A, JUMP_DURATION
+	JZ	WAIT
+
+	MOV	JUMP_DURATION, #0
+	JMP	RESTART
+
 	END
