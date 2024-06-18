@@ -23,6 +23,18 @@ CMD	MACRO	CMD_CODE
 	CLR	E
 ENDM
 
+; print cactus to LCD if cond bit is set, else print space
+printc	macro	cond
+	local	print_space
+	local	print_cactus
+	jnb	cond, print_space
+	cmd	#cactus
+	jmp	print_cactus
+print_space:
+	cmd	#space
+print_cactus:
+endm
+
 ; ========== code ==========
 	ORG	0H
 	JMP	INIT
@@ -61,14 +73,25 @@ INIT:
 ;	CMD	A
 ;	CJNE	R0, #24, LOAD_CHARACTERS
 
+; print birds
+	CLR	RS		; select command register
+	cmd #87h		; move cursor to the middle of the sky
+	SETB	RS		; select data register
+	cmd #bird
+	cmd #space
+	cmd #space
+	cmd #bird
+	cmd #space
+	cmd #bird
+
 ; load floor
 	MOV	FLOOR_R, #00100011B
 	MOV	FLOOR_L, #00010011B
 
 GAME_LOOP:
-; update jump duration
+; decrement jump duration while above 0
 	MOV	A, JUMP_DURATION
-	JZ	DURATION_NO_UPDATE	; dino is on the floor if duration = 0
+	JZ	DURATION_NO_UPDATE
 	DEC	JUMP_DURATION
 DURATION_NO_UPDATE:
 
@@ -83,7 +106,7 @@ DURATION_NO_UPDATE:
 
 ; repaint
 	CLR	RS		; select command register
-	CMD	#81H		; second line, second character
+	CMD	#81H		; second line,
 	SETB	RS		; select data register
 
 ; dino up
@@ -97,7 +120,7 @@ DINO_UP_0:
 DINO_UP_1:
 
 	CLR	RS		; select command register
-	CMD	#0C1H		; second line, second character
+	CMD	#0C1H		; second line
 	SETB	RS		; select data register
 
 ; dino down
@@ -110,35 +133,22 @@ DINO_DOWN_0:
 	CMD	#SPACE
 DINO_DOWN_1:
 
-; floor left
-	MOV	R0, #0
-	MOV	A, FLOOR_L
-	RL	A
-
-REPAINT_FLOOR_L:
-	JB	A.7, PRINT_FLOOR_L
-	CMD	#SPACE
-	JMP	SKIP_FLOOR_L
-PRINT_FLOOR_L:
-	CMD	#CACTUS
-SKIP_FLOOR_L:
-	RL	A
-	INC	R0
-	CJNE	R0, #7, REPAINT_FLOOR_L
-
-; floor right
-	MOV	A, FLOOR_R
-
-REPAINT_FLOOR_R:
-	JB	A.7, PRINT_FLOOR_R
-	CMD	#SPACE
-	JMP	SKIP_FLOOR_R
-PRINT_FLOOR_R:
-	CMD	#CACTUS
-SKIP_FLOOR_R:
-	RL	A
-	INC	R0
-	CJNE	R0, #15, REPAINT_FLOOR_R
+; repaint cacti
+	printc	floor_l.6
+	printc	floor_l.5
+	printc	floor_l.4
+	printc	floor_l.3
+	printc	floor_l.2
+	printc	floor_l.1
+	printc	floor_l.0
+	printc	floor_r.7
+	printc	floor_r.6
+	printc	floor_r.5
+	printc	floor_r.4
+	printc	floor_r.3
+	printc	floor_r.2
+	printc	floor_r.1
+	printc	floor_r.0
 
 	JMP	GAME_LOOP
 	END
