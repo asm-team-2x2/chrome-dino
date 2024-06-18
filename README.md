@@ -7,3 +7,7 @@ Chrome Dino game in 8051 assembly
 - <https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller>
 - <https://www.sparkfun.com/datasheets/LCD/HD44780.pdf>
 - <https://www.electronicshub.org/interfacing-16x2-lcd-8051>
+
+## Macros
+
+- <https://courses.cs.washington.edu/courses/cse466/01au/Lab/A251.pdf>
